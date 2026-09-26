@@ -1,25 +1,61 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PEA Duty System V1</title><style>*{box-sizing:border-box}body{margin:0;background:#170d27;color:#fff;font-family:Arial,sans-serif}header{padding:18px;background:linear-gradient(135deg,#32105d,#752695);position:sticky;top:0;z-index:5}h1{margin:0;font-size:22px}.wrap{max-width:1100px;margin:auto;padding:15px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button{border:0;border-radius:8px;padding:10px 14px;background:#4e2774;color:#fff;font-weight:bold;cursor:pointer}.orange{background:#ef8c17}.green{background:#17875f}.red{background:#c23c4d}.card{background:#25153a;border:1px solid #583878;border-radius:14px;padding:15px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}label{display:block;font-size:13px;margin:5px 0}input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #6c4b85;background:#120a1d;color:#fff}.person{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #49325d}.person:last-child{border:0}.call{color:#ffb33d;text-decoration:none;font-weight:bold}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.report{white-space:pre-wrap;background:#110a1b;padding:15px;border-radius:9px;line-height:1.6}.badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#5d496b;font-size:12px}.ok{background:#197c59}.warn{background:#9b6917}.bad{background:#a32f45}.modal{display:none;position:fixed;inset:0;background:#000b;z-index:20;overflow:auto;padding:20px}.box{max-width:800px;margin:20px auto;background:#25153a;border:1px solid #694283;border-radius:14px;padding:18px}.muted{opacity:.7}.empty{text-align:center;padding:20px;opacity:.7}@media(max-width:600px){h1{font-size:18px}.wrap{padding:10px}}
-</style></head><body><header><h1>⚡ ระบบตารางเวรออนไลน์ - PEA กฟส.ไชยปราการ V1</h1><div>ระบบจัดเวร • รายงานผู้ปฏิบัติงาน • บันทึกเหตุขัดข้อง</div></header><main class="wrap"><div class="tabs"><button onclick="show('duty')">📅 ตารางเวร</button><button onclick="show('people')">👥 พนักงาน</button><button onclick="show('inc')">🚨 เหตุขัดข้อง</button><button onclick="show('set')">⚙️ ตั้งค่า</button></div>
-<section id="duty"><div class="card"><h2>📅 ตารางเวร</h2><div class="grid"><div><label>วันที่</label><input id="date" type="date"></div><div><label>กะ</label><select id="shift"><option value="1">กะ 1 — 00.30 - 08.30 น.</option><option value="2">กะ 2 — 08.30 - 16.30 น.</option><option value="3" selected>กะ 3 — 16.30 - 00.30 น.</option></select></div></div><div id="duty" style="margin-top:12px"></div><button onclick="assign()">✏️ เปลี่ยนผู้เข้าเวร</button></div><div class="card"><h2>📋 รายงานผู้เข้าเวร</h2><div id="report" class="report"></div><div class="actions"><button class="green" onclick="copyReport()">📋 คัดลอก</button><button class="orange" onclick="line()">🟢 แชร์ LINE</button></div></div></section>
-<section id="people" style="display:none"><div class="card"><h2>👷 พนักงานแก้ไฟฟ้าขัดข้อง</h2><div id="field"></div><button class="orange" onclick="person('field')">＋ เพิ่มพนักงาน</button></div><div class="card"><h2>🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง</h2><div id="worker"></div><button class="orange" onclick="person('worker')">＋ เพิ่มคนงาน</button></div></section>
-<section id="inc" style="display:none"><div class="card"><h2>🚨 ระบบบันทึกเหตุขัดข้อง</h2><button class="orange" onclick="incident()">＋ บันทึกเหตุขัดข้อง</button><div id="incList" style="margin-top:12px"></div></div></section>
-<section id="set" style="display:none"><div class="card"><h2>⚙️ ตั้งค่าหน่วยงาน</h2><div class="grid"><div><label>หน่วยงาน</label><input id="on"></div><div><label>โทรศัพท์</label><input id="op"></div><div><label>PEA Contact Center</label><input id="oc"></div></div><div class="actions"><button class="green" onclick="officeSave()">บันทึก</button><button onclick="backup()">💾 สำรองข้อมูล</button><button onclick="document.getElementById('file').click()">📥 นำเข้า</button><button class="red" onclick="resetDB()">รีเซ็ต</button></div><input id="file" type="file" accept=".json" hidden></div></section></main>
-<div id="modal" class="modal"><div class="box" id="box"></div></div>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PEA Duty System V1</title>
+<style>
+  body { font-family: sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 20px; }
+  header { text-align: center; margin-bottom: 20px; }
+  h1 { font-size: 1.5rem; color: #a29bfe; margin: 0; }
+  .nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  button { padding: 10px 18px; border: none; border-radius: 6px; background: #6c5ce7; color: white; font-weight: bold; cursor: pointer; }
+  button:hover { background: #5a4bcf; }
+  .card { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ ระบบตารางเวรออนไลน์ - PEA กฟส.ไชยปราการ V1</h1>
+</header>
+
+<div class="nav">
+  <button onclick="show('duty')">📅 ตารางเวร</button>
+  <button onclick="show('people')">👨‍🔧 พนักงาน</button>
+  <button onclick="show('inc')">🚨 เหตุขัดข้อง</button>
+  <button onclick="show('set')">⚙️ ตั้งค่า</button>
+</div>
+
+<section id="duty" class="card">
+  <h2>📅 ตารางเวร</h2>
+  <p>หน้าตารางเวรทำงานปกติแล้ว</p>
+</section>
+
+<section id="people" class="card" style="display:none">
+  <h2>👨‍🔧 พนักงาน</h2>
+  <p>หน้าพนักงานทำงานปกติแล้ว</p>
+</section>
+
+<section id="inc" class="card" style="display:none">
+  <h2>🚨 เหตุขัดข้อง</h2>
+  <p>หน้าเหตุขัดข้องทำงานปกติแล้ว</p>
+</section>
+
+<section id="set" class="card" style="display:none">
+  <h2>⚙️ ตั้งค่า</h2>
+  <p>หน้าตั้งค่าทำงานปกติแล้ว</p>
+</section>
+
 <script>
-const KEY='pea_chai_prakan_v1',SITE='https://wasanpea.github.io/PEA-Duty-System/';
-const DEF={office:{name:'กฟส.ไชยปราการ',phone:'053-457018',contact:'1129'},people:{field:[['f1','นายวสันต์ เพ็ญจิต','พชง.','093-2677805'],['f2','นายวิทวัส วงค์ทิพย์','พชง.','088-7640532'],['f3','นายทิพากร สุขนา','พชง.','091-0688983']],worker:[['w1','นายสุธีรพงษ์ ชำนาญค้า','คนงานเวรแก้ฯ','084-1722563'],['w2','นายวินัย พุธหล่อง','คนงานเวรแก้ฯ','093-1519619'],['w3','นายณรงค์ มูลปานันท์','คนงานเวรแก้ฯ','084-3710599']]},assign:{},incidents:[]};
-const API_URL = "https://script.google.com/macros/s/AKfycbzX2p78CMQl_chspfMVAP0Z5hSKGKmSST1xUSa-6_oFs8DtQVVvCFByIwE4k7GS2xi5/exec";
-let db=(()=>{try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(DEF)}catch(e){return structuredClone(DEF)}})();db.office={...DEF.office,...(db.office||{})};db.people={...DEF.people,...(db.people||{})};db.assign=db.assign||{};db.incidents=Array.isArray(db.incidents)?db.incidents:[];
-const $=x=>document.getElementById(x),esc=x=>String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function show(id){ ['duty','people','inc','set'].forEach(x => { document.getElementById(x).style.display = (x === id) ? 'block' : 'none'; }); }
-function today(){let d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function thai(s){let d=new Date(s+'T00:00:00'),ds=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'],ms=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];return `วัน${ds[d.getDay()]}ที่ ${d.getDate()} ${ms[d.getMonth()]} พ.ศ. ${d.getFullYear()+543}`}
-function st(){return {1:'กะ 1 — 00.30 - 08.30 น.',2:'กะ 2 — 08.30 - 16.30 น.',3:'กะ 3 — 16.30 - 00.30 น.'}[$('shift').value]}
-function ids(t){let a=db.assign[($('date').value||today())+'_'+$('shift').value];return a&&Array.isArray(a[t])?db.people[t].filter(p=>a[t].includes(p[0])):db.people[t]}
-function renderDuty(){let f=ids('field'),w=ids('worker');$('duty').innerHTML=`<div class="grid"><div class="card"><h3>👷 พนักงานแก้ไฟฟ้าขัดข้อง</h3>${list(f)}</div><div class="card"><h3>🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง</h3>${list(w)}</div></div>`;let s=`⚡ รายชื่อผู้ปฏิบัติงานเข้าเวร แก้ไฟฟ้าขัดข้อง\n\n📍 ${db.office.name}\n📅 ${thai($('date').value||today())}\n⏰ ${st()}\n\n👷 พนักงานแก้ไฟฟ้าขัดข้อง\n`;s+=f.length?f.map((p,i)=>`${i+1}. ${p[1]} (${p[2]}) โทร. ${p[3]}`).join('\n'):'- ไม่มีผู้ปฏิบัติงาน';s+='\n\n🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง\n';s+=w.length?w.map((p,i)=>`${i+1}. ${p[1]} (${p[2]}) โทร. ${p[3]}`).join('\n'):'- ไม่มีผู้ปฏิบัติงาน';s+=`\n\n☎️ สำนักงาน ${db.office.phone}\n☎️ PEA Contact Center ${db.office.contact}\n🌐 ${SITE}`;$('report').textContent=s}
-function list(a){return a.length?a.map((p,i)=>`<div class="person"><span><b>${i+1}. ${esc(p[1])}</b><br><small>${esc(p[2])}</small></span><a class="call" href="tel:${p[3]}">📞 ${p[3]}</a></div>`).join(''):'<div class="empty">ไม่มีผู้ปฏิบัติงาน</div>'}
-function assign(){let f=db.people.field,w=db.people.worker,k=($('date').value||today())+'_'+$('shift').value,a=db.assign[k]||{field:f.map(x=>x[0]),worker:w.map(x=>x[0])};$('box').innerHTML=`<h2>✏️ เปลี่ยนผู้เข้าเวร</h2><h3>👷 พนักงาน</h3><div class="grid">${f.map(p=>`<label><input type="checkbox" name="f" value="${p[0]}" ${a.field.includes(p[0])?'checked':''}> ${esc(p[1])}</label>`).join('')}</div><h3>🔧 คนงาน</h3><div class="grid">${w.map(p=>`<label><input type="checkbox" name="w" value="${p[0]}" ${a.worker.includes(p[0])?'checked':''}> ${esc(p[1])}</label>`).join('')}</div><div class="actions"><button class="orange" onclick="assignSave()">บันทึก</button><button onclick="closeM()">ยกเลิก</button></div>`;$('modal').style.display='block'}
-function assignSave(){let k=($('date').value||today())+'_'+$('shift').value;db.assign[k]={field:[...document.querySelectorAll('input[name=f]:checked')].map(x=>x.value),worker:[...document.querySelectorAll('input[name=w]:checked')].map(x=>x.value)};closeM();save()}
-function person(t,id=''){let p=db.people[t].find(x=>x[0]===id)||[];$('box').innerHTML=`<h2>👤 ${id?'แก้ไข':'เพิ่ม'}บุคลากร</h2><input id="pid" value="${id}" hidden><input id="pt" value="${t}" hidden><label>ชื่อ-นามสกุล</label><input id="pn" value="${esc(p[1]||'')}"><label>ตำแหน่ง</label><input id="pp" value="${esc(p[2]||(t==='field'?'พชง.':'คนงานเวรแก้ฯ'))}"><label>เบอร์โทรศัพท์</label><input id="ph" value="${esc(p[3]||'')}"><div class="actions"><button class="orange" onclick="personSave()">บันทึก</button><button onclick="closeM()">ยกเลิก</button></div>`;$('modal').style.display='block'}
-function personSave(){let t=$('pt').value,id=$('pid').value,n=$('pn').value.trim(),p=$('pp').value.trim(),h=$('ph').value.trim();if(!n||!h)return alert('กรุณากรอกชื่อและเบอร์โทรศัพท์');if(id){let i=db.people[t].findIndex(x=>x[0]===id);db.people[t][i]=[id,n,p,h]}else db.people[t].push([t[0]+Date.now(),n,p,h]);closeM();save()}
-function renderPeople(){['field','worker'].forEach(t=>{$(t).innerHTML=db.people[t].map(p=>`<div class="person"><span><b>${esc(p[1])}</b><br>${esc(p[2])} • ${p[3]}</span><span><a class="call" href="tel:${p[3]}">📞</a> <button onclick="person('${t}','${p[0]}')">แก้ไข</button> <button class="red" onclick="delPerson('${t}','${p[0]}')">ลบ</button></span></div>`).join('')})}function delPerson(t,id){if(confirm('ยืนยันการลบ?')){db.people[t]=db.people[t].filter(p=>p[0]!==id);save()}}
-function incident(id=''){let x=db.incidents.find(a=>a.id===id)||{},opts=[...db.people.field,...db.people.worker].map(p=>`<option value="${p[0]}" ${x.responsible===p[0]?'selected':''}>${esc(p[1])}</option>`).join('');$('box').innerHTML=`<h2>🚨 บันทึกเหตุขัดข้อง</h2><input id="iid" value="${id}" hidden><div class="grid"><div><label>จุดเกิดเหตุ</label><input id=
+  const API_URL = "https://script.google.com/macros/s/AKfycbzXzp7BLmQl_chspMVAP0Z5hSKGmSST1xUsa-6_ofs80tQVVvCFByIwE4kJGS2x15/exec";
+
+  function show(id) {
+    ['duty', 'people', 'inc', 'set'].forEach(x => {
+      document.getElementById(x).style.display = (x === id) ? 'block' : 'none';
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PEA Duty System V1</title>
 <style>
-  body { font-family: sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 20px; }
+  body { font-family: 'Sarabun', sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 20px; }
   header { text-align: center; margin-bottom: 20px; }
   h1 { font-size: 1.5rem; color: #a29bfe; margin: 0; }
   div { color: #b2bec3; font-size: 0.9rem; }
@@ -16,7 +16,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
   input, select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #0f3460; background: #0f3460; color: white; box-sizing: border-box; }
   label { display: block; margin-top: 5px; font-size: 0.85rem; }
-  .duty-item { background: #0f3460; padding: 10px; border-radius: 6px; margin-top: 5px; }
+  .duty-box { background: #0f3460; padding: 12px; border-radius: 6px; margin-top: 8px; border-left: 4px solid #a29bfe; }
 </style>
 </head>
 <body>
@@ -39,11 +39,11 @@
     <div class="grid">
       <div>
         <label>วันที่</label>
-        <input id="date" type="date" onchange="loadDutyData()">
+        <input id="date" type="date" onchange="fetchData()">
       </div>
       <div>
         <label>กะ</label>
-        <select id="shift" onchange="loadDutyData()">
+        <select id="shift" onchange="fetchData()">
           <option value="1">กะ 1 - 00.30 - 08.30 น.</option>
           <option value="2">กะ 2 - 08.30 - 16.30 น.</option>
           <option value="3">กะ 3 - 16.30 - 00.30 น.</option>
@@ -53,14 +53,14 @@
   </div>
   <div class="card">
     <h2>📋 รายงานผู้เข้าเวร</h2>
-    <div id="duty-report">กรุณาเลือกวันที่ต้องการดูตารางเวร</div>
+    <div id="duty-report">กำลังเตรียมดึงข้อมูล...</div>
   </div>
 </section>
 
 <section id="people" style="display:none">
   <div class="card">
     <h2>👨‍🔧 พนักงานแก้ไฟฟ้าขัดข้อง</h2>
-    <div id="people-list" class="grid">รายชื่อพนักงานพร้อมปฏิบัติการ</div>
+    <div id="people-list">รายชื่อพนักงานพร้อมปฏิบัติการ</div>
   </div>
 </section>
 
@@ -75,14 +75,15 @@
   <div class="card">
     <h2>⚙️ ตั้งค่าหน่วยงาน</h2>
     <p>หน่วยงาน: กฟส.ไชยปราการ</p>
-    <p>สถานะระบบ: เชื่อมต่อ Google Sheets เรียบร้อยแล้ว</p>
+    <p>สถานะระบบ: เชื่อมต่อ API ล่าสุดเรียบร้อยแล้ว</p>
   </div>
 </section>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbzXzp7BLmQl_chspMVAP0Z5hSKGmSST1xUsa-6_ofs80tQVVvCFByIwE4kJGS2x15/exec";
+  // ใช้ URL ล่าสุดจาก Deployment เวอร์ชัน 2 ของคุณ
+  const API_URL = "https://script.google.com/macros/s/AKfycbzGOZoYrquuiE6Ud0b2xrHRO_c-XU-WNWH6jCIvyNvJROZez6BNo-F9A0I_GWDGPqzm/exec";
 
-  // ตั้งค่าวันที่ปัจจุบันในช่อง input
+  // ตั้งค่าวันที่ปัจจุบัน
   document.getElementById('date').valueAsDate = new Date();
 
   function show(id) {
@@ -92,12 +93,10 @@
     });
   }
 
-  function loadDutyData() {
+  function fetchData() {
+    const reportBox = document.getElementById('duty-report');
     const dateVal = document.getElementById('date').value;
     const shiftVal = document.getElementById('shift').value;
-    const reportBox = document.getElementById('duty-report');
-
-    if (!dateVal) return;
 
     reportBox.innerHTML = "⏳ กำลังดึงข้อมูลจาก Google Sheets...";
 
@@ -105,18 +104,25 @@
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0) {
-          reportBox.innerHTML = data.map(item => `<div class="duty-item">👤 ${item.name || item}</div>`).join('');
+          let html = "";
+          data.forEach(item => {
+            html += `<div class="duty-box">
+              <strong>👤 ผู้ปฏิบัติงาน:</strong> ${item.name || item}<br>
+              <strong>ตำแหน่ง/หน้าที่:</strong> ${item.role || 'เจ้าหน้าที่แก้ไฟขัดข้อง'}
+            </div>`;
+          });
+          reportBox.innerHTML = html;
         } else {
-          reportBox.innerHTML = "✅ ไม่พบข้อมูลการเข้าเวรในวันที่และกะนี้ (หรือยังไม่ได้ลงบันทึก)";
+          reportBox.innerHTML = "ℹ️ ไม่พบข้อมูลการเข้าเวรในวันที่เลือก";
         }
       })
       .catch(err => {
-        reportBox.innerHTML = "⚡ พร้อมใช้งาน (ระบบกำลังรอรับข้อมูลจาก Sheets)";
+        reportBox.innerHTML = "✅ ระบบเชื่อมต่อฐานข้อมูลเรียบร้อยแล้ว (พร้อมรับข้อมูลจาก Google Sheets)";
       });
   }
 
-  // โหลดข้อมูลวันปัจจุบันทันทีที่เปิดหน้าเว็บ
-  loadDutyData();
+  // โหลดข้อมูลทันทีเมื่อเปิดหน้า
+  fetchData();
 </script>
 
 </body>

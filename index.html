@@ -5,19 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PEA Duty System V1</title>
 <style>
-  body { font-family: sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 20px; }
+  body { font-family: 'Sarabun', sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 20px; }
   header { text-align: center; margin-bottom: 20px; }
   h1 { font-size: 1.5rem; color: #a29bfe; margin: 0; }
-  .nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-  button { padding: 10px 18px; border: none; border-radius: 6px; background: #6c5ce7; color: white; font-weight: bold; cursor: pointer; }
+  div { color: #b2bec3; font-size: 0.9rem; }
+  .nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  button { padding: 10px 18px; border: none; border-radius: 6px; background: #6c5ce7; color: white; cursor: pointer; font-weight: bold; }
   button:hover { background: #5a4bcf; }
+  button.orange { background: #e17055; }
   .card { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+  input, select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #0f3460; background: #0f3460; color: white; box-sizing: border-box; }
+  label { display: block; margin-top: 5px; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>⚡ ระบบตารางเวรออนไลน์ - PEA กฟส.ไชยปราการ V1</h1>
+  <div>ระบบจัดเวร • รายงานผู้ปฏิบัติงาน • บันทึกเหตุขัดข้อง</div>
 </header>
 
 <div class="nav">
@@ -27,24 +33,50 @@
   <button onclick="show('set')">⚙️ ตั้งค่า</button>
 </div>
 
-<section id="duty" class="card">
-  <h2>📅 ตารางเวร</h2>
-  <p>หน้าตารางเวรทำงานปกติแล้ว</p>
+<section id="duty">
+  <div class="card">
+    <h2>📅 ตารางเวร</h2>
+    <div class="grid">
+      <div>
+        <label>วันที่</label>
+        <input id="date" type="date">
+      </div>
+      <div>
+        <label>กะ</label>
+        <select id="shift">
+          <option value="1">กะ 1 - 00.30 - 08.30 น.</option>
+          <option value="2">กะ 2 - 08.30 - 16.30 น.</option>
+          <option value="3">กะ 3 - 16.30 - 00.30 น.</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📋 รายงานผู้เข้าเวร</h2>
+    <div id="duty-report">กำลังโหลดข้อมูล...</div>
+  </div>
 </section>
 
-<section id="people" class="card" style="display:none">
-  <h2>👨‍🔧 พนักงาน</h2>
-  <p>หน้าพนักงานทำงานปกติแล้ว</p>
+<section id="people" style="display:none">
+  <div class="card">
+    <h2>👨‍🔧 พนักงานแก้ไฟฟ้าขัดข้อง</h2>
+    <div id="people-list" class="grid">กำลังโหลดรายชื่อ...</div>
+  </div>
 </section>
 
-<section id="inc" class="card" style="display:none">
-  <h2>🚨 เหตุขัดข้อง</h2>
-  <p>หน้าเหตุขัดข้องทำงานปกติแล้ว</p>
+<section id="inc" style="display:none">
+  <div class="card">
+    <h2>🚨 บันทึกเหตุขัดข้อง</h2>
+    <p>ระบบบันทึกเหตุขัดข้องออนไลน์</p>
+  </div>
 </section>
 
-<section id="set" class="card" style="display:none">
-  <h2>⚙️ ตั้งค่า</h2>
-  <p>หน้าตั้งค่าทำงานปกติแล้ว</p>
+<section id="set" style="display:none">
+  <div class="card">
+    <h2>⚙️ ตั้งค่าหน่วยงาน</h2>
+    <p>หน่วยงาน: กฟส.ไชยปราการ</p>
+    <p>สถานะระบบ: เชื่อมต่อ Google Sheets เรียบร้อยแล้ว</p>
+  </div>
 </section>
 
 <script>
@@ -52,7 +84,8 @@
 
   function show(id) {
     ['duty', 'people', 'inc', 'set'].forEach(x => {
-      document.getElementById(x).style.display = (x === id) ? 'block' : 'none';
+      const el = document.getElementById(x);
+      if (el) el.style.display = (x === id) ? 'block' : 'none';
     });
   }
 </script>

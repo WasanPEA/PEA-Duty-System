@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PEA Duty System - กฟส.ไชยปราการ</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#160c25;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}
+header{background:linear-gradient(135deg,#32105d,#762596);padding:18px;position:sticky;top:0;z-index:5;box-shadow:0 3px 12px #0008}
+h1{margin:0;font-size:22px}.sub{opacity:.8;margin-top:5px;font-size:13px}
+.wrap{max-width:1120px;margin:auto;padding:14px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{border:0;border-radius:9px;padding:10px 14px;background:#4e2774;color:#fff;font-weight:bold;cursor:pointer}
+button:hover{filter:brightness(1.12)}.orange{background:#ef8c17}.green{background:#16885f}.red{background:#c43c4e}.dark{background:#30263c}
+.card{background:#24143a;border:1px solid #573777;border-radius:14px;padding:15px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+label{display:block;font-size:13px;margin:7px 0 4px;color:#eadff1}
+input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #6b4b83;background:#120a1d;color:#fff;font-size:15px}
+textarea{resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.person{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #49315d}.person:last-child{border:0}
+.call{color:#ffb33d;text-decoration:none;font-weight:bold}.report{white-space:pre-wrap;background:#10091a;border:1px solid #4d355e;border-radius:9px;padding:15px;line-height:1.65}
+.badge{display:inline-block;padding:4px 8px;border-radius:18px;background:#5d496b;font-size:12px}.ok{background:#197d59}.warn{background:#9b6917}.bad{background:#a52f46}.wait{background:#55506a}
+.empty{text-align:center;padding:22px;opacity:.7}.muted{opacity:.7;font-size:13px}.status{margin:8px 0;padding:9px 12px;border-radius:8px;background:#3a2750;font-size:13px}
+.modal{display:none;position:fixed;inset:0;background:#000b;z-index:20;overflow:auto;padding:20px}.box{max-width:850px;margin:20px auto;background:#24143a;border:1px solid #694283;border-radius:14px;padding:18px}
+@media(max-width:600px){h1{font-size:18px}.wrap{padding:9px}.person{align-items:flex-start;flex-direction:column}th,td{font-size:13px}}
+</style>
+</head>
+<body>
+<header><h1>⚡ ระบบตารางเวรออนไลน์ - PEA กฟส.ไชยปราการ</h1><div class="sub">V1 • Google Sheets Cloud Database</div></header>
+<main class="wrap">
+<div id="syncStatus" class="status">⏳ กำลังเชื่อมต่อระบบ Cloud...</div>
+<nav class="tabs">
+<button onclick="showTab('duty')">📅 ตารางเวร</button><button onclick="showTab('people')">👥 พนักงาน</button>
+<button onclick="showTab('inc')">🚨 เหตุขัดข้อง</button><button onclick="showTab('set')">⚙️ ตั้งค่า</button>
+</nav>
+<section id="duty">
+<div class="card"><h2>📅 ตารางเวร</h2>
+<div class="grid"><div><label>วันที่</label><input id="date" type="date"></div><div><label>กะ</label><select id="shift"><option value="1">กะ 1 — 00.30 - 08.30 น.</option><option value="2">กะ 2 — 08.30 - 16.30 น.</option><option value="3" selected>กะ 3 — 16.30 - 00.30 น.</option></select></div></div>
+<div id="dutyView" style="margin-top:12px"></div><div class="actions"><button onclick="openAssign()">✏️ เปลี่ยนผู้เข้าเวร</button></div></div>
+<div class="card"><h2>📋 รายงานผู้เข้าเวร</h2><div id="report" class="report"></div><div class="actions"><button class="green" onclick="copyReport()">📋 คัดลอก</button><button class="orange" onclick="shareLine()">🟢 แชร์ LINE</button></div></div>
+</section>
+<section id="people" style="display:none">
+<div class="card"><h2>👷 พนักงานแก้ไฟฟ้าขัดข้อง</h2><div id="fieldList"></div><button class="orange" onclick="openPerson('field')">＋ เพิ่มพนักงาน</button></div>
+<div class="card"><h2>🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง</h2><div id="workerList"></div><button class="orange" onclick="openPerson('worker')">＋ เพิ่มคนงาน</button></div>
+</section>
+<section id="inc" style="display:none">
+<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>🚨 ระบบบันทึกเหตุขัดข้อง</h2><button class="orange" onclick="openIncident()">＋ บันทึกเหตุขัดข้อง</button></div><div id="incidentList"></div></div>
+</section>
+<section id="set" style="display:none">
+<div class="card"><h2>⚙️ ตั้งค่าหน่วยงาน</h2><div class="grid"><div><label>ชื่อหน่วยงาน</label><input id="officeName"></div><div><label>เบอร์สำนักงาน</label><input id="officePhone"></div><div><label>PEA Contact Center</label><input id="officeContact"></div></div>
+<div class="actions"><button class="green" onclick="saveOffice()">บันทึก</button><button onclick="syncData()">🔄 ซิงค์ข้อมูล</button></div>
+<p class="muted">ฐานข้อมูลเชื่อมต่อกับ Google Sheets แบบเรียลไทม์</p></div>
+</section>
+</main>
+
+<div id="personModal" class="modal"><div class="box"><h2>👤 บุคลากร</h2><input id="personId" type="hidden"><input id="personType" type="hidden"><div class="grid"><div><label>ชื่อ-นามสกุล</label><input id="personName"></div><div><label>ตำแหน่ง</label><input id="personPos"></div><div><label>เบอร์โทรศัพท์</label><input id="personPhone"></div></div><div class="actions"><button class="orange" onclick="savePerson()">บันทึก</button><button class="dark" onclick="closeModal('personModal')">ยกเลิก</button></div></div></div>
+
+<div id="assignModal" class="modal"><div class="box"><h2>✏️ เปลี่ยนผู้เข้าเวร</h2><p id="assignInfo" class="muted"></p><h3>👷 พนักงานแก้ไฟฟ้าขัดข้อง</h3><div id="assignField" class="grid"></div><h3>🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง</h3><div id="assignWorker" class="grid"></div><div class="actions"><button class="orange" onclick="saveAssign()">บันทึก</button><button class="dark" onclick="closeModal('assignModal')">ยกเลิก</button></div></div></div>
+
+<div id="incidentModal" class="modal"><div class="box"><h2>🚨 บันทึกเหตุขัดข้อง</h2><input id="incId" type="hidden"><div class="grid">
+<div><label>จุดเกิดเหตุ</label><input id="incPoint"></div><div><label>สถานที่</label><input id="incLocation"></div><div><label>อุปกรณ์ที่ชำรุด</label><input id="incEquipment"></div><div><label>เวลาแจ้งเหตุ</label><input id="incReportTime" type="datetime-local"></div>
+<div><label>ผู้รับผิดชอบ</label><select id="incResponsible"></select></div><div><label>สถานะ</label><select id="incStatus"><option>รับแจ้งเหตุ</option><option>กำลังดำเนินการ</option><option>ดำเนินการแล้ว</option><option>รออุปกรณ์/รอดำเนินการ</option></select></div>
+<div><label>เวลาเริ่มแก้ไข</label><input id="incStart" type="datetime-local"></div><div><label>เวลาไฟฟ้ากลับมาใช้ได้</label><input id="incFinish" type="datetime-local"></div>
+<div><label>สาเหตุของเหตุขัดข้อง</label><input id="incCause"></div><div><label>อุปกรณ์ที่ใช้ในการแก้ไข</label><input id="incMaterials"></div><div><label>หมายเลขงาน / Work Order</label><input id="incWO"></div><div><label>พิกัด GPS</label><input id="incGPS"></div></div>
+<label>รายละเอียด / ผลการดำเนินงาน</label><textarea id="incDetails" rows="4"></textarea><div class="actions"><button class="orange" onclick="saveIncident()">บันทึก</button><button class="dark" onclick="closeModal('incidentModal')">ยกเลิก</button></div></div></div>
+
+<script>
+'use strict';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx5Wm1YBO7_5fwavhm2khc7g1j6AG7pTr9eRxyzOojUgejm-u-mgwdga8GbdA_QwXX1/exec'; // <-- เปลี่ยนตรงนี้เป็น URL ของคุณ
+const DEFAULT = {
+  office:{name:'กฟส.ไชยปราการ',phone:'053-456789',contact:'1129'},
+  people:{
+    field:[['f1','นายวสันต์ เพ็ญจิต','พชง.','081-1111111'],['f2','นายวิทวัส วงค์ทิพย์','พชง.','082-2222222']],
+    worker:[['w1','นายสุธีรพงษ์ ชำนาญค้า','คนงานเวรแก้ฯ','083-3333333']]
+  },
+  duty:{},incidents:[]
+};
+let db = JSON.parse(JSON.stringify(DEFAULT));
+
+function $(id){return document.getElementById(id)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;}[m]))}
+function today(){let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+
+async function api(action, payload=null){
+  if(API_URL.includes('PASTE_')) {
+    $('syncStatus').innerText = '⚠️ กรุณาใส่ API_URL ของ Google Apps Script ในโค้ดก่อน';
+    return null;
+  }
+  try {
+    let opts = {method: 'GET'};
+    let url = `${API_URL}?action=${action}`;
+    if(payload) {
+      opts = {method: 'POST', body: JSON.stringify(payload)};
+    }
+    let res = await fetch(url, opts);
+    let json = await res.json();
+    if(json.status === 'success') return json.data;
+    throw new Error(json.message);
+  } catch(e) {
+    console.error(e);
+    $('syncStatus').innerText = '❌ เชื่อมต่อ Cloud ไม่สำเร็จ: ' + e.message;
+    return null;
+  }
+}
+
+async function syncData(){
+  $('syncStatus').innerText = '⏳ กำลังซิงค์ข้อมูลกับ Google Sheets...';
+  let data = await api('get');
+  if(data) {
+    db = data;
+    $('syncStatus').innerText = '🟢 เชื่อมต่อและซิงค์ข้อมูลกับ Google Sheets สำเร็จ';
+    renderAll();
+  }
+}
+
+async function saveToCloud(){
+  $('syncStatus').innerText = '⏳ กำลังบันทึกข้อมูลลง Google Sheets...';
+  let res = await api('save', db);
+  if(res) {
+    $('syncStatus').innerText = '🟢 บันทึกข้อมูลลง Google Sheets สำเร็จ';
+    setTimeout(()=>$('syncStatus').innerText = '🟢 เชื่อมต่อ Cloud ปกติ', 3000);
+  }
+}
+
+function showTab(id){
+  ['duty','people','inc','set'].forEach(t=>$(t).style.display = t===id ? 'block':'none');
+}
+
+function renderAll(){
+  $('date').value = $('date').value || today();
+  $('officeName').value = db.office.name;
+  $('officePhone').value = db.office.phone;
+  $('officeContact').value = db.office.contact;
+  renderDuty();
+  renderPeople();
+  renderIncidents();
+}
+
+function renderDuty(){
+  let k = `${$('date').value}_${$('shift').value}`;
+  let a = db.duty?.[k] || {field:[], worker:[]};
+  let html = '<h3>พนักงานเวร</h3>';
+  let allF = db.people.field || [];
+  let assignedF = allF.filter(p=>a.field.includes(p[0]));
+  if(assignedF.length === 0) html += '<div class="muted">ยังไม่ได้กำหนดเวรพนักงาน</div>';
+  assignedF.forEach(p=>{
+    html += `<div class="person"><d

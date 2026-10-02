@@ -71,7 +71,7 @@ textarea{resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top
 'use strict';
 
 /* หลังจาก Deploy Google Apps Script ให้นำ URL /exec มาใส่ตรงนี้ */
-const API_URL = 'https://script.google.com/macros/s/AKfycbx5Wm1YBO7_5fwavhm2khc7g1j6AG7pTr9eRxyzOojUgejm-u-mgwdga8GbdA_QwXX1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxud9bQzEU7OOl0rwKYUkgAMK3dV4yFHgw6dn0naix7ovrTWFGN6LPNtezj489j5Y-x/exec';
 const SITE_URL = 'https://wasanpea.github.io/PEA-Duty-System/';
 const LOCAL_KEY = 'pea_duty_cloud_cache_v1';
 const DEFAULT = {office:{name:'กฟส.ไชยปราการ',phone:'053-457018',contact:'1129'},people:{field:[['f1','นายวสันต์ เพ็ญจิต','พชง.','093-2677805'],['f2','นายวิทวัส วงค์ทิพย์','พชง.','088-7640532'],['f3','นายทิพากร สุขนา','พชง.','091-0688983']],worker:[['w1','นายสุธีรพงษ์ ชำนาญค้า','คนงานเวรแก้ฯ','084-1722563'],['w2','นายวินัย พุธหล่อง','คนงานเวรแก้ฯ','093-1519619'],['w3','นายณรงค์ มูลปานันท์','คนงานเวรแก้ฯ','084-3710599']]},duty:{},incidents:[]};
@@ -93,73 +93,51 @@ function key(){return `${$('date').value}_${$('shift').value}`}
 function assigned(type){let a=db.duty?.[key()];if(!a)return db.people[type]||[];let ids=a[type]||[];return (db.people[type]||[]).filter(p=>ids.includes(p[0]))}
 
 function api(action, params={}){
- return new Promise((resolve,reject)=>{
-  if(!API_URL || API_URL.includes('PASTE_GOOGLE')) return reject(new Error('ยังไม่ได้ตั้งค่า API_URL'));
-  const cb='peaCB_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-  const script=document.createElement('script');
-  const q=new URLSearchParams({action,...params,callback:cb}).toString();
-  const timer=setTimeout(()=>{cleanup();reject(new Error('หมดเวลาการเชื่อมต่อ'))},15000);
-  window[cb]=data=>{cleanup();if(data&&data.ok)resolve(data);else reject(new Error(data?.error||'เกิดข้อผิดพลาด'))};
-  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
-  script.onerror=()=>{cleanup();reject(new Error('เชื่อมต่อ Google Apps Script ไม่สำเร็จ'))};
-  script.src=API_URL+(API_URL.includes('?')?'&':'?')+q;
-  document.body.appendChild(script);
- })
+ return new Promise((resolve,re
+// ===== เพิ่มส่วนนี้ท้ายไฟล์ index.html =====
+
+async function syncFromCloud() {
+  try {
+    $('syncStatus').className = 'status wait';
+    $('syncStatus').innerHTML = '⏳ กำลังเชื่อมต่อกับ Google Sheets...';
+
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('ไม่ตอบสนอง');
+    
+    const json = await res.json();
+    if (json.status !== 'success') throw new Error(json.message || 'ผิดพลาด');
+
+    db = {...db, ...json.data};
+    saveCache();
+
+    $('syncStatus').className = 'status ok';
+    $('syncStatus').innerHTML = '✅ เชื่อมต่อ Google Sheets สำเร็จ — ใช้ข้อมูลล่าสุดจากระบบ';
+    
+    renderAll(); // อัปเดตหน้าจอ
+  } catch (err) {
+    $('syncStatus').className = 'status warn';
+    $('syncStatus').innerHTML = '⚠️ ยังไม่เชื่อม Google Sheets — ใช้ข้อมูลสำรองในเครื่อง (' + err.message + ')';
+  }
 }
-async function sync(){
- setStatus('⏳ กำลังเชื่อมต่อ Google Sheets...');
- try{let r=await api('getAll');db={office:r.office,people:r.people,duty:r.duty,incidents:r.incidents};saveCache();setStatus('🟢 เชื่อมต่อ Google Sheets แล้ว • ข้อมูลเป็นส่วนกลาง');renderAll()}
- catch(e){setStatus('🟠 ยังไม่เชื่อม Google Sheets — กำลังใช้ข้อมูลสำรองในเครื่อง');renderAll()}
+
+function renderAll() {
+  setToday();
+  renderDuty();
+  renderPeople();
+  renderIncidents();
+  renderOffice();
 }
-function setStatus(t){$('syncStatus').textContent=t}
-async function saveToCloud(action,params){
- try{await api(action,params);await sync();return true}catch(e){setStatus('🔴 บันทึก Google Sheets ไม่สำเร็จ: '+e.message);alert('บันทึกไม่สำเร็จ\\n'+e.message);return false}
+
+function setToday() {
+  if (!$('date').value) $('date').value = today();
 }
-function showTab(id){['duty','people','inc','set'].forEach(x=>$(x).style.display=x===id?'block':'none');if(id==='people')renderPeople();if(id==='inc')renderIncidents();if(id==='set')fillSettings()}
-function renderAll(){renderDuty();generateReport();renderPeople();renderIncidents();fillSettings()}
-function renderDuty(){
- let f=assigned('field'),w=assigned('worker');
- $('dutyView').innerHTML=`<div class="grid"><div class="card"><h3>👷 พนักงานแก้ไฟฟ้าขัดข้อง</h3>${f.length?f.map((p,i)=>`<div class="person"><div><b>${i+1}. ${esc(p[1])}</b><br><span class="muted">${esc(p[2])}</span></div><a class="call" href="tel:${esc(p[3])}">📞 ${esc(p[3])}</a></div>`).join(''):'<div class="empty">ไม่มีผู้ปฏิบัติงาน</div>'}</div><div class="card"><h3>🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง</h3>${w.length?w.map((p,i)=>`<div class="person"><div><b>${i+1}. ${esc(p[1])}</b><br><span class="muted">${esc(p[2])}</span></div><a class="call" href="tel:${esc(p[3])}">📞 ${esc(p[3])}</a></div>`).join(''):'<div class="empty">ไม่มีผู้ปฏิบัติงาน</div>'}</div></div>`
+
+function showTab(name) {
+  document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+  $(name).style.display = 'block';
 }
-function generateReport(){
- let f=assigned('field'),w=assigned('worker'),s=`⚡ รายชื่อผู้ปฏิบัติงานเข้าเวร แก้ไฟฟ้าขัดข้อง\\n\\n📍 ${db.office.name}\\n📅 ${thaiDate($('date').value)}\\n⏰ ${shiftText($('shift').value)}\\n\\n👷 พนักงานแก้ไฟฟ้าขัดข้อง\\n`;
- s+=f.length?f.map((p,i)=>`${i+1}. ${p[1]} (${p[2]}) โทร. ${p[3]}`).join('\\n'):'- ไม่มีผู้ปฏิบัติงาน';
- s+='\\n\\n🔧 คนงานเวรแก้ไฟฟ้าขัดข้อง\\n';s+=w.length?w.map((p,i)=>`${i+1}. ${p[1]} (${p[2]}) โทร. ${p[3]}`).join('\\n'):'- ไม่มีผู้ปฏิบัติงาน';
- s+=`\\n\\n☎️ สำนักงาน ${db.office.phone}\\n☎️ PEA Contact Center ${db.office.contact}\\n🌐 ${SITE_URL}`;$('report').textContent=s
-}
-async function copyReport(){let t=$('report').textContent;try{await navigator.clipboard.writeText(t)}catch(e){let a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}alert('คัดลอกรายงานเรียบร้อยแล้วครับ')}
-function shareLine(){window.open('https://line.me/R/msg/text/?'+encodeURIComponent($('report').textContent),'_blank')}
-function renderPeople(){
- for(const type of ['field','worker']){let el=$(type==='field'?'fieldList':'workerList'),arr=db.people[type]||[];el.innerHTML=arr.length?arr.map(p=>`<div class="person"><div><b>${esc(p[1])}</b><br><span class="muted">${esc(p[2])} • ${esc(p[3])}</span></div><div class="actions"><a class="call" href="tel:${esc(p[3])}">📞</a><button onclick="openPerson('${type}','${p[0]}')">แก้ไข</button><button class="red" onclick="deletePerson('${type}','${p[0]}')">ลบ</button></div></div>`).join(''):'<div class="empty">ยังไม่มีข้อมูล</div>'}
-}
-function openPerson(type,id=''){let p=(db.people[type]||[]).find(x=>x[0]===id);$('personType').value=type;$('personId').value=id;$('personName').value=p?.[1]||'';$('personPos').value=p?.[2]||(type==='field'?'พชง.':'คนงานเวรแก้ฯ');$('personPhone').value=p?.[3]||'';$('personModal').style.display='block'}
-async function savePerson(){let type=$('personType').value,id=$('personId').value||uid(type[0]),name=$('personName').value.trim(),position=$('personPos').value.trim(),phone=$('personPhone').value.trim();if(!name||!phone)return alert('กรุณากรอกชื่อและเบอร์โทรศัพท์');await saveToCloud('upsertPerson',{id,type,name,position,phone});closeModal('personModal')}
-async function deletePerson(type,id){if(!confirm('ยืนยันการลบข้อมูลบุคลากรนี้?'))return;await saveToCloud('deletePerson',{id})}
-function openAssign(){
- $('assignInfo').textContent=`${thaiDate($('date').value)} • ${shiftText($('shift').value)}`;
- for(const type of ['field','worker']){let a=db.duty?.[key()]||{field:(db.people.field||[]).map(p=>p[0]),worker:(db.people.worker||[]).map(p=>p[0])},arr=db.people[type]||[],id=type==='field'?'assignField':'assignWorker';$(id).innerHTML=arr.map(p=>`<label><input type="checkbox" name="as_${type}" value="${p[0]}" ${a[type].includes(p[0])?'checked':''}> ${esc(p[1])}</label>`).join('')||'<span class="muted">ไม่มีข้อมูล</span>'}
- $('assignModal').style.display='block'
-}
-async function saveAssign(){let params={date:$('date').value,shift:$('shift').value,fieldIds:[...document.querySelectorAll('input[name="as_field"]:checked')].map(x=>x.value).join(','),workerIds:[...document.querySelectorAll('input[name="as_worker"]:checked')].map(x=>x.value).join(',')};await saveToCloud('saveDuty',params);closeModal('assignModal')}
-function fillResponsible(){let arr=allPeople();$('incResponsible').innerHTML='<option value="">-- เลือกผู้รับผิดชอบ --</option>'+arr.map(p=>`<option value="${p[0]}">${esc(p[1])} (${esc(p[2])})</option>`).join('')}
-function openIncident(id=''){let x=(db.incidents||[]).find(v=>v.id===id);fillResponsible();$('incId').value=id;$('incPoint').value=x?.point||'';$('incLocation').value=x?.location||'';$('incEquipment').value=x?.equipment||'';$('incReportTime').value=x?.reportTime||nowLocal();$('incResponsible').value=x?.responsible||'';$('incStatus').value=x?.status||'รับแจ้งเหตุ';$('incStart').value=x?.startTime||'';$('incFinish').value=x?.finishTime||'';$('incCause').value=x?.cause||'';$('incMaterials').value=x?.materials||'';$('incWO').value=x?.wo||'';$('incGPS').value=x?.gps||'';$('incDetails').value=x?.details||'';$('incidentModal').style.display='block'}
-async function saveIncident(){
- let id=$('incId').value||uid('inc'),r=$('incResponsible').value,rp=findPerson(r),x={id,point:$('incPoint').value.trim(),location:$('incLocation').value.trim(),equipment:$('incEquipment').value.trim(),reportTime:$('incReportTime').value,responsible:r,responsibleName:rp?.[1]||'',status:$('incStatus').value,startTime:$('incStart').value,finishTime:$('incFinish').value,cause:$('incCause').value.trim(),materials:$('incMaterials').value.trim(),wo:$('incWO').value.trim(),gps:$('incGPS').value.trim(),details:$('incDetails').value.trim()};
- if(!x.point&&!x.location)return alert('กรุณากรอกจุดเกิดเหตุหรือสถานที่');
- await saveToCloud('upsertIncident',x);closeModal('incidentModal')
-}
-function statusClass(s){return s==='ดำเนินการแล้ว'?'ok':s==='กำลังดำเนินการ'?'warn':s==='รออุปกรณ์/รอดำเนินการ'?'wait':'bad'}
-function renderIncidents(){let el=$('incidentList'),arr=db.incidents||[];if(!arr.length){el.innerHTML='<div class="empty">ยังไม่มีการบันทึกเหตุขัดข้อง</div>';return}el.innerHTML=arr.map(x=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>🚨 ${esc(x.point||x.location||'-')}</b><br><span class="muted">${esc(x.location||'')}</span></div><span class="badge ${statusClass(x.status)}">${esc(x.status)}</span></div><div class="grid" style="margin-top:10px"><div><b>อุปกรณ์:</b> ${esc(x.equipment||'-')}</div><div><b>แจ้ง:</b> ${esc(x.reportTime||'-')}</div><div><b>ผู้รับผิดชอบ:</b> ${esc(x.responsibleName||'-')}</div><div><b>Work Order:</b> ${esc(x.wo||'-')}</div><div><b>เริ่มแก้:</b> ${esc(x.startTime||'-')}</div><div><b>ไฟกลับ:</b> ${esc(x.finishTime||'-')}</div><div><b>สาเหตุ:</b> ${esc(x.cause||'-')}</div><div><b>อุปกรณ์ใช้:</b> ${esc(x.materials||'-')}</div><div><b>GPS:</b> ${esc(x.gps||'-')}</div></div><p><b>ผลการดำเนินงาน:</b> ${esc(x.details||'-')}</p><div class="actions"><button onclick="openIncident('${x.id}')">แก้ไข</button><button class="red" onclick="deleteIncident('${x.id}')">ลบ</button></div></div>`).join('')}
-async function deleteIncident(id){if(!confirm('ยืนยันการลบเหตุขัดข้องนี้?'))return;await saveToCloud('deleteIncident',{id})}
-function fillSettings(){$('officeName').value=db.office?.name||'';$('officePhone').value=db.office?.phone||'';$('officeContact').value=db.office?.contact||''}
-async function saveOffice(){await saveToCloud('saveSettings',{name:$('officeName').value.trim(),phone:$('officePhone').value.trim(),contact:$('officeContact').value.trim()})}
-function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PEA-Duty-System-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
-function restoreBackup(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);saveCache();renderAll();alert('นำเข้าข้อมูลในเครื่องแล้ว หากต้องการส่งกลับ Google Sheets ให้บันทึกผ่านเมนูต่าง ๆ')}catch(x){alert('ไฟล์ไม่ถูกต้อง')}};r.readAsText(f);e.target.value=''}
-function resetLocal(){if(confirm('ล้างข้อมูลสำรองในเครื่อง? ข้อมูล Google Sheets จะไม่ถูกลบ')){localStorage.removeItem(LOCAL_KEY);db=clone(DEFAULT);renderAll()}}
-function closeModal(id){$(id).style.display='none'}
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.style.display='none'}));
-$('date').addEventListener('change',()=>{renderDuty();generateReport()});$('shift').addEventListener('change',()=>{renderDuty();generateReport()});
-window.addEventListener('DOMContentLoaded',()=>{$('date').value=today();$('shift').value='3';renderAll();sync()});
-</script>
-</body>
-</html>
+
+// เรียกทำงานทันทีเมื่อโหลดหน้า
+document.addEventListener('DOMContentLoaded', syncFromCloud);
+
+// ===== จบส่วนที่เพิ่ม =====

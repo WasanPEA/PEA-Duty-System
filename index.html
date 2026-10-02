@@ -71,7 +71,7 @@ textarea{resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top
 'use strict';
 
 /* หลังจาก Deploy Google Apps Script ให้นำ URL /exec มาใส่ตรงนี้ */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxud9bQzEU7OOl0rwKYUkgAMK3dV4yFHgw6dn0naix7ovrTWFGN6LPNtezj489j5Y-x/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwoLUKJI8vncbhRNHYHFIN1D4DGN2-GYQUjbnG7q2-70XDKPv4scwPM9VFRTp2s60e-/exec';
 const SITE_URL = 'https://wasanpea.github.io/PEA-Duty-System/';
 const LOCAL_KEY = 'pea_duty_cloud_cache_v1';
 const DEFAULT = {office:{name:'กฟส.ไชยปราการ',phone:'053-457018',contact:'1129'},people:{field:[['f1','นายวสันต์ เพ็ญจิต','พชง.','093-2677805'],['f2','นายวิทวัส วงค์ทิพย์','พชง.','088-7640532'],['f3','นายทิพากร สุขนา','พชง.','091-0688983']],worker:[['w1','นายสุธีรพงษ์ ชำนาญค้า','คนงานเวรแก้ฯ','084-1722563'],['w2','นายวินัย พุธหล่อง','คนงานเวรแก้ฯ','093-1519619'],['w3','นายณรงค์ มูลปานันท์','คนงานเวรแก้ฯ','084-3710599']]},duty:{},incidents:[]};
@@ -90,54 +90,42 @@ function shiftText(s){return ({1:'กะ 1 — 00.30 - 08.30 น.',2:'กะ 2 �
 function allPeople(){return [...(db.people.field||[]),...(db.people.worker||[])]}
 function findPerson(id){return allPeople().find(p=>p[0]===id)}
 function key(){return `${$('date').value}_${$('shift').value}`}
-function assigned(type){let a=db.duty?.[key()];if(!a)return db.people[type]||[];let ids=a[type]||[];return (db.people[type]||[]).filter(p=>ids.includes(p[0]))}
-
-function api(action, params={}){
- return new Promise((resolve,re
+function assigned(type){let a=db.duty?.[key()];if(!a)return db.people[type]||[];let ids=a[type]||[];return (db.people[type]||[]).filter(p=>ids.includes(p[
 // ===== เพิ่มส่วนนี้ท้ายไฟล์ index.html =====
-
-async function syncFromCloud() {
-  try {
-    $('syncStatus').className = 'status wait';
-    $('syncStatus').innerHTML = '⏳ กำลังเชื่อมต่อกับ Google Sheets...';
-
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('ไม่ตอบสนอง');
-    
-    const json = await res.json();
-    if (json.status !== 'success') throw new Error(json.message || 'ผิดพลาด');
-
-    db = {...db, ...json.data};
-    saveCache();
-
-    $('syncStatus').className = 'status ok';
-    $('syncStatus').innerHTML = '✅ เชื่อมต่อ Google Sheets สำเร็จ — ใช้ข้อมูลล่าสุดจากระบบ';
-    
-    renderAll(); // อัปเดตหน้าจอ
-  } catch (err) {
-    $('syncStatus').className = 'status warn';
-    $('syncStatus').innerHTML = '⚠️ ยังไม่เชื่อม Google Sheets — ใช้ข้อมูลสำรองในเครื่อง (' + err.message + ')';
-  }
-}
-
-function renderAll() {
-  setToday();
-  renderDuty();
-  renderPeople();
-  renderIncidents();
-  renderOffice();
-}
-
-function setToday() {
-  if (!$('date').value) $('date').value = today();
-}
-
-function showTab(name) {
-  document.querySelectorAll('section').forEach(s => s.style.display = 'none');
-  $(name).style.display = 'block';
-}
-
-// เรียกทำงานทันทีเมื่อโหลดหน้า
-document.addEventListener('DOMContentLoaded', syncFromCloud);
-
-// ===== จบส่วนที่เพิ่ม =====
+ async function syncFromCloud() {
+   try {
+     $('syncStatus').className = 'status wait';
+     $('syncStatus').innerHTML = '⏳ กำลังเชื่อมต่อกับ Google Sheets...';
+     const res = await fetch(API_URL);
+     if (!res.ok) throw new Error('ไม่ตอบสนอง');
+     
+     const json = await res.json();
+     if (json.status !== 'success') throw new Error(json.message || 'ผิดพลาด');
+     db = {...db, ...json.data};
+     saveCache();
+     $('syncStatus').className = 'status ok';
+     $('syncStatus').innerHTML = '✅ เชื่อมต่อ Google Sheets สำเร็จ — ใช้ข้อมูลล่าสุดจากระบบ';
+     
+     renderAll(); // อัปเดตหน้าจอ
+   } catch (err) {
+     $('syncStatus').className = 'status warn';
+     $('syncStatus').innerHTML = '⚠️ ยังไม่เชื่อม Google Sheets — ใช้ข้อมูลสำรองในเครื่อง (' + err.message + ')';
+   }
+ }
+ function renderAll() {
+   setToday();
+   renderDuty();
+   renderPeople();
+   renderIncidents();
+   renderOffice();
+ }
+ function setToday() {
+   if (!$('date').value) $('date').value = today();
+ }
+ function showTab(name) {
+   document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+   $(name).style.display = 'block';
+ }
+ // เรียกทำงานทันทีเมื่อโหลดหน้า
+ document.addEventListener('DOMContentLoaded', syncFromCloud);
+ // ===== จบส่วนที่เพิ่ม =====
